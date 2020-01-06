@@ -2,46 +2,15 @@
  * FreeModbus Libary: A portable Modbus implementation for Modbus ASCII/RTU.
  * Copyright (c) 2006 Christian Walter <wolti@sil.at>
  * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * File: $Id: mb.h,v 1.17 2006/12/07 22:10:34 wolti Exp $
  */
 
 #ifndef _MB_H
 #define _MB_H
 
-#include "port.h"
-
-#ifdef __cplusplus
-PR_BEGIN_EXTERN_C
-#endif
-
 #include "mbport.h"
-#include "mbproto.h"
-
-
-
+#include "mbfunc.h"
+#include "mbconfig.h"
+#include "mbrtu.h"
 
 
 /*! \defgroup modbus Modbus
@@ -70,27 +39,6 @@ PR_BEGIN_EXTERN_C
  * \endcode
  */
 
-/* ----------------------- Defines ------------------------------------------*/
-
-/*! \ingroup modbus
- * \brief Use the default Modbus TCP port (502)
- */
-#define MB_TCP_PORT_USE_DEFAULT 0   
-
-/* ----------------------- Type definitions ---------------------------------*/
-
-/*! \ingroup modbus
- * \brief Modbus serial transmission modes (RTU/ASCII).
- *
- * Modbus serial supports two transmission modes. Either ASCII or RTU. RTU
- * is faster but has more hardware requirements and requires a network with
- * a low jitter. ASCII is slower and more reliable on slower links (E.g. modems)
- */
-typedef enum
-{
-	MB_RTU, /*!< RTU transmission mode. */
-	MB_TCP /*!< TCP mode. */
-} eMBMode;
 
 /*! \ingroup modbus
  * \brief If register should be written or read.
@@ -109,20 +57,7 @@ typedef enum
 	MB_REG_WRITE /*!< Update register values. */
 } eMBRegisterMode;
 
-/*! \ingroup modbus
- * \brief Errorcodes used by all function in the protocol stack.
- */
-typedef enum
-{
-	MB_ENOERR, /*!< no error. */
-	MB_ENOREG, /*!< illegal register address. */
-	MB_EINVAL, /*!< illegal argument. */
-	MB_EPORTERR, /*!< porting layer error. */
-	MB_ENORES, /*!< insufficient resources. */
-	MB_EIO, /*!< I/O error. */
-	MB_EILLSTATE, /*!< protocol stack in illegal state. */
-	MB_ETIMEDOUT /*!< timeout error occurred. */
-} eMBErrorCode;
+
 
 /* ----------------------- Function prototypes ------------------------------*/
 /*! \ingroup modbus
@@ -148,7 +83,7 @@ typedef enum
  *        slave addresses are in the range 1 - 247.
  *    - eMBErrorCode::MB_EPORTERR IF the porting layer returned an error.
  */
-eMBErrorCode eMBInit( MODBUS *modbus, eMBMode eMode, uint8_t ucSlaveAddress);
+eMBErrorCode eMBInit( MODBUS *modbus, uint8_t ucSlaveAddress);
 
 /*! \ingroup modbus
  * \brief Initialize the Modbus protocol stack for Modbus TCP.
@@ -166,21 +101,6 @@ eMBErrorCode eMBInit( MODBUS *modbus, eMBMode eMode, uint8_t ucSlaveAddress);
  */
 eMBErrorCode eMBTCPInit(uint16_t usTCPPort);
 
-/*! \ingroup modbus
- * \brief Release resources used by the protocol stack.
- *
- * This function disables the Modbus protocol stack and release all
- * hardware resources. It must only be called when the protocol stack 
- * is disabled. 
- *
- * \note Note all ports implement this function. A port which wants to 
- *   get an callback must define the macro MB_PORT_HAS_CLOSE to 1.
- *
- * \return If the resources where released it return eMBErrorCode::MB_ENOERR.
- *   If the protocol stack is not in the disabled state it returns
- *   eMBErrorCode::MB_EILLSTATE.
- */
-eMBErrorCode eMBClose(MODBUS *modbus);
 
 /*! \ingroup modbus
  * \brief Enable the Modbus protocol stack.
@@ -403,7 +323,5 @@ eMBErrorCode eMBRegCoilsCB(uint8_t *pucRegBuffer, uint16_t usAddress, uint16_t u
  */
 eMBErrorCode eMBRegDiscreteCB(uint8_t *pucRegBuffer, uint16_t usAddress, uint16_t usNDiscrete);
 
-#ifdef __cplusplus
-PR_END_EXTERN_C
-#endif
+
 #endif

@@ -8,25 +8,53 @@
 #ifndef MY_LIBS_PROTOCOLS_MODBUS_SERIAL_DRV_H_
 #define MY_LIBS_PROTOCOLS_MODBUS_SERIAL_DRV_H_
 
-#include <protocols/modbus.h>
+
+#include "mb.h"
+#include "mbport.h"
 
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rcc.h>
+#include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/usart.h>
-//#include <libopencm3/stm32/timer.h>
 #include "convert_fn.h"
 #include <usart_hl.h>
 
 
-#define MB_NVIC_USART_IRQ	NVIC_USART1_IRQ
+typedef enum
+{
+	STATE_TX_IDLE, /*!< Transmitter is in idle state. */
+	STATE_TX_XMIT /*!< Transmitter is in transfer state. */
+} eMBSndState;
 
+/* Hardware abstraction layer */
+typedef enum
+{
+	STATE_RX_INIT, /*!< Receiver is in initial state. */
+	STATE_RX_IDLE, /*!< Receiver is in idle state. */
+	STATE_RX_RCV, /*!< Frame is beeing received. */
+	STATE_RX_ERROR /*!< If the frame is invalid. */
+} eMBRcvState;
 
+/*! \ingroup modbus
+ * \brief Parity used for characters in serial mode.
+ *
+ * The parity which should be applied to the characters sent over the serial
+ * link. Please note that this values are actually passed to the porting
+ * layer and therefore not all parity modes might be available.
+ */
+typedef enum
+{
+    MB_PAR_NONE,                /*!< No parity. */
+    MB_PAR_ODD,                 /*!< Odd parity. */
+    MB_PAR_EVEN                 /*!< Even parity. */
+} eMBParity;
 
 typedef struct
 {
 	Modbus_Interface	interface;
-	uint8_t				xEventInQueue;
-	eMBEventType		eQueuedEvent;
+	eMBSndState 		eSndState;
+	eMBRcvState 		eRcvState;
+	uint8_t				FrameRcvFlag;
 	USART_HAL			*usart_hl;
 } MB_Serial_Driver;
 

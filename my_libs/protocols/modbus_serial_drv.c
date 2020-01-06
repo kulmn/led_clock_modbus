@@ -7,165 +7,76 @@
 
 #include <protocols/modbus_serial_drv.h>
 
-/* ----------------------- Static variables ---------------------------------*/
 
-//static eMBEventType eQueuedEvent;
-//static bool xEventInQueue;
 
-static void vMBPortTimersDisable(Modbus_Interface *interface);
-
-static bool xMBPortEventInit(Modbus_Interface *interface)
+void xMBPortStart(Modbus_Interface *interface)
 {
 	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
 
-	driver->xEventInQueue = false;
-	return true;
+	ENTER_CRITICAL_SECTION( );
+	// Initially the receiver is in the state STATE_RX_INIT. we start
+	// the timer and if no character is received within t3.5 we change
+	// to STATE_RX_IDLE. This makes sure that we delay startup of the
+	// modbus protocol stack until the bus is free.
+
+	usart_disable_tx_interrupt(driver->usart_hl->usart );
+	usart_enable_rx_interrupt(driver->usart_hl->usart );
+	usart_enable_rx_timeout(driver->usart_hl->usart );
+	usart_enable_rx_timeout_interrupt(driver->usart_hl->usart );
+
+//	driver->eRcvState = STATE_RX_INIT;
+	driver->eRcvState = STATE_RX_IDLE;
+
+//	interface->xMBPortEventPost(interface, EV_READY );
+
+	EXIT_CRITICAL_SECTION( );
 }
 
-static bool xMBPortEventPost(Modbus_Interface *interface, eMBEventType eEvent)
+void xMBPortStop(Modbus_Interface *interface)
 {
 	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
 
-	driver->xEventInQueue = true;
-	driver->eQueuedEvent = eEvent;
-	return true;
+	ENTER_CRITICAL_SECTION( );
 
+	usart_disable_tx_interrupt(driver->usart_hl->usart );
+	usart_disable_rx_interrupt(driver->usart_hl->usart );
+	usart_disable_rx_timeout(driver->usart_hl->usart );
+	usart_disable_rx_timeout_interrupt(driver->usart_hl->usart );
+
+	EXIT_CRITICAL_SECTION( );
 }
 
-static bool xMBPortEventGet(Modbus_Interface *interface, eMBEventType *eEvent)
+
+
+static bool xMBPortFrameReceived(Modbus_Interface *interface)
 {
 	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
 
-	bool xEventHappened = false;
 
-	if (driver->xEventInQueue)
+	if (driver->FrameRcvFlag)
 	{
-		*eEvent = driver->eQueuedEvent;
-		driver->xEventInQueue = false;
-		xEventHappened = true;
+		driver->FrameRcvFlag = 0;
+		return true;
 	}
-	return xEventHappened;
+	return false;
 
 }
 
 /* ----------------------- Initialize USART ----------------------------------*/
 /* Called with databits = 8 for RTU */
-static bool xMBPortSerialInit(Modbus_Interface *interface)
+static bool xMBPortInit(Modbus_Interface *interface)
 {
 	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
 
 	bool bStatus;
 
-	/*
-	gpio_mode_setup(driver->usart_tx.port, GPIO_MODE_AF, GPIO_PUPD_NONE, driver->usart_tx.pins );
-	gpio_set_af(driver->usart_tx.port, driver->usart_tx.alt_func, driver->usart_tx.pins );
-	gpio_mode_setup(driver->usart_rx.port, GPIO_MODE_AF, GPIO_PUPD_NONE, driver->usart_rx.pins );
-	gpio_set_af(driver->usart_rx.port, driver->usart_tx.alt_func, driver->usart_rx.pins );
-
-	rcc_periph_clock_enable(MB_USART_RCC );
-	nvic_enable_irq(MB_NVIC_USART_IRQ );
-
-	// Setup UART parameters.
-	usart_set_baudrate(driver->usart, ulBaudRate );
-	usart_set_stopbits(driver->usart, USART_STOPBITS_1 );
-	usart_set_flow_control(driver->usart, USART_FLOWCONTROL_NONE );
-	usart_set_mode(driver->usart, USART_MODE_TX_RX );
-	bStatus = true;
-	switch (eParity)
-	{
-		case MB_PAR_NONE:
-			usart_set_parity(driver->usart, USART_PARITY_NONE );
-			break;
-		case MB_PAR_ODD:
-			usart_set_parity(driver->usart, USART_PARITY_ODD );
-			break;
-		case MB_PAR_EVEN:
-			usart_set_parity(driver->usart, USART_PARITY_EVEN );
-			break;
-		default:
-			bStatus = false;
-			break;
-	}
-
-	if (eParity == MB_PAR_NONE) usart_set_databits(driver->usart, 8 );
-	else usart_set_databits(driver->usart, 9 );
-
-	if (bStatus == true)
-	{
-		// Finally enable the USART.
-		usart_disable_rx_interrupt(driver->usart );
-		usart_disable_tx_interrupt(driver->usart );
-		usart_enable(driver->usart );
-	}
-*/
+	usart_set_rx_timeout_value(driver->usart_hl->usart, 35 );
 
 	bStatus = true;
 	return bStatus;
-
 }
 
-/* ----------------------- Close Serial Port ----------------------------------*/
-/* ----------------------- Close Ports -----------------------------*/
-static void vMBPortClose(Modbus_Interface *interface)
-{
-	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
 
-	nvic_disable_irq(MB_NVIC_USART_IRQ );
-	usart_disable(driver->usart_hl->usart );
-
-
-	vMBPortTimersDisable(interface );
-}
-
-/* ----------------------- Enable USART interrupts -----------------------------*/
-static void vMBPortSerialEnable(Modbus_Interface *interface, bool xRxEnable, bool xTxEnable)
-{
-	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
-
-	/* If xRXEnable enable serial receive interrupts. If xTxENable enable
-	 * transmitter empty interrupts.
-	 */
-	if (xRxEnable)
-	{
-		usart_enable_rx_interrupt(driver->usart_hl->usart );
-	} else
-	{
-		usart_disable_rx_interrupt(driver->usart_hl->usart);
-	}
-
-	if (xTxEnable)
-	{
-		usart_enable_tx_interrupt(driver->usart_hl->usart );
-	} else
-	{
-		usart_disable_tx_interrupt(driver->usart_hl->usart );
-	}
-
-}
-
-/* ----------------------- Get character ----------------------------------*/
-static bool xMBPortSerialGetByte(Modbus_Interface *interface, uint8_t *pucByte)
-{
-	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
-
-	/* Return the byte in the UARTs receive buffer. This function is called
-	 * by the protocol stack after pxMBFrameCBByteReceived( ) has been called.
-	 */
-	*pucByte = (uint8_t) usart_recv(driver->usart_hl->usart );
-	return true;
-}
-
-/* -----------------------Send character  ----------------------------------*
-static bool xMBPortSerialPutByte(Modbus_Interface *interface, uint8_t ucByte)
-{
-	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
-
-	// Put a byte in the UARTs transmit buffer. This function is called
-	 // by the protocol stack if pxMBFrameCBTransmitterEmpty( ) has been called.
-	usart_send(driver->usart_hl->usart, ucByte );
-	return true;
-}
-*/
 
 static bool xMBPortSerialSendBuf(Modbus_Interface *interface, uint8_t *snd_buf, uint8_t len)
 {
@@ -184,105 +95,61 @@ static bool xMBPortSerialSendBuf(Modbus_Interface *interface, uint8_t *snd_buf, 
 		}
 	}
 
+	driver->eSndState = STATE_TX_XMIT;
 	usart_enable_tx_interrupt(driver->usart_hl->usart );
 	return true;
 }
 
 
-/* ----------------------- Initialize Timer -----------------------------*/
-static bool xMBPortTimersInit(Modbus_Interface *interface, uint16_t usTimeOut50us)
+void xMBRTUTimerT35Expired(MODBUS *modbus)
 {
-	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
+	MB_Serial_Driver *driver = (MB_Serial_Driver*) modbus->driver;
 
-	usart_set_rx_timeout_value(driver->usart_hl->usart, 35 );
-//	usart_enable_rx_timeout(MB_USART);
-//	usart_enable_rx_timeout_interrupt(MB_USART);
-//	timer_set_period(MB_TIMER, usTim1Timerout50us);	// 50 microseconds period
-	return true;
-}
+	switch (driver->eRcvState)
+	{
+		// Timer t35 expired. Startup phase is finished.
+//		case STATE_RX_INIT:
+//			modbus->driver->xMBPortEventPost(modbus->driver, EV_READY );
+//			break;
 
+			// A frame was received and t35 expired. Notify the listener that a new frame was received.
+		case STATE_RX_RCV:
 
-/* ----------------------- Enable Timer -----------------------------*/
-static void vMBPortTimersEnable(Modbus_Interface *interface)
-{
-	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
+			driver->FrameRcvFlag = 1;
+			 uint8_t len = driver->usart_hl->rx_buf.datalength;
+			 uint8_t *ptr = modbus->packet_buf;
+			modbus->packet_size = len;
+			while (len--)
+			{
+				*ptr = bufferGetFromFront(&driver->usart_hl->rx_buf);
+				ptr++;
+			}
 
-	usart_enable_rx_timeout(driver->usart_hl->usart );
-	usart_enable_rx_timeout_interrupt(driver->usart_hl->usart);
+			break;
 
-}
+			// An error occured while receiving the frame.
+		case STATE_RX_ERROR:
+			break;
 
-/* ----------------------- Disable timer -----------------------------*/
-static void vMBPortTimersDisable(Modbus_Interface *interface)
-{
-	MB_Serial_Driver *driver = (MB_Serial_Driver*) interface;
+	}
 
 	usart_disable_rx_timeout(driver->usart_hl->usart );
 	usart_disable_rx_timeout_interrupt(driver->usart_hl->usart );
+	driver->eRcvState = STATE_RX_IDLE;
 }
-
-
-
-/*
-void MB_USART_ISR(void)
-{
-	// Read data register not empty flag
-	if (usart_get_flag(MB_USART, USART_SR_RXNE ))
-	{
-		pxMBFrameCBByteReceived();
-	}
-	//   Transmit data register empty flag
-	if (usart_get_flag(MB_USART, USART_SR_TXE ))
-	{
-		pxMBFrameCBTransmitterEmpty();
-	}
-	// Receiver timeout flag
-	if (usart_get_flag(MB_USART, USART_ISR_RTOF ))
-	{
-		USART_ICR(MB_USART) |= USART_ICR_RTOCF;
-		pxMBPortCBTimerExpired();
-	}
-}
-*/
-/*
-void MB_USART_ISR_FN(void *arg)
-{
-
-//	MB_Serial_Driver *driver = (MB_Serial_Driver*) arg;
-
-	MODBUS *modbus = (MODBUS *) arg;
-	MB_Serial_Driver *driver = (MB_Serial_Driver*) modbus->driver;
-
-	// Read data register not empty flag
-	if (usart_get_flag(driver->usart_hl->usart, USART_SR_RXNE ))
-	{
-		pxMBFrameCBByteReceived(modbus);
-	}
-	//   Transmit data register empty flag
-	if (usart_get_flag(driver->usart_hl->usart, USART_SR_TXE ))
-	{
-		pxMBFrameCBTransmitterEmpty( modbus);
-	}
-	// Receiver timeout flag
-	if (usart_get_flag(driver->usart_hl->usart, USART_ISR_RTOF ))
-	{
-		USART_ICR(driver->usart_hl->usart) |= USART_ICR_RTOCF;
-		pxMBPortCBTimerExpired(modbus);
-	}
-}
-*/
 
 
 void xMBRTUTransmitFSM(MODBUS *modbus)
 {
 	MB_Serial_Driver *driver = (MB_Serial_Driver*) modbus->driver;
 
-	switch (modbus->eSndState)
+	switch (driver->eSndState)
 	{
 		// We should not get a transmitter event if the transmitter is in idle state.
 		case STATE_TX_IDLE:
 			// enable receiver/disable transmitter.
-			modbus->driver->vMBPortSerialEnable(modbus->driver,  true, false);
+			usart_disable_tx_interrupt(driver->usart_hl->usart );
+			usart_enable_rx_interrupt(driver->usart_hl->usart );
 			break;
 
 		case STATE_TX_XMIT:
@@ -293,15 +160,62 @@ void xMBRTUTransmitFSM(MODBUS *modbus)
 			} else
 			{
 				// Disable transmitter. This prevents another transmit buffer empty interrupt.
-				//usart_disable_tx_interrupt(driver->usart_hl->usart );
-				modbus->driver->vMBPortSerialEnable(modbus->driver,  true, false);
+				usart_disable_tx_interrupt(driver->usart_hl->usart );
+				usart_enable_rx_interrupt(driver->usart_hl->usart );
 
-				driver->xEventInQueue = true;
-				driver->eQueuedEvent = EV_FRAME_SENT;
-				modbus->eSndState = STATE_TX_IDLE;
+				driver->eSndState = STATE_TX_IDLE;
 			}
 			break;
 	}
+}
+
+
+void xMBRTUReceiveFSM(MODBUS *modbus)
+{
+	MB_Serial_Driver *driver = (MB_Serial_Driver*) modbus->driver;
+	uint8_t ucByte;
+
+	// Always read the character.
+	ucByte = usart_recv(driver->usart_hl->usart );
+	//modbus->driver->xMBPortSerialGetByte(modbus->driver, (uint8_t*) &ucByte );
+	//(void) xMBPortSerialGetByte((uint8_t*) &ucByte );
+
+	switch (driver->eRcvState)
+	{
+			// In the error state we wait until all characters in the damaged frame are transmitted.
+		case STATE_RX_ERROR:
+			break;
+			// In the idle state we wait for a new character. If a character
+			// is received the t1.5 and t3.5 timers are started and the
+			//receiver is in the state STATE_RX_RECEIVCE.
+		case STATE_RX_IDLE:
+			if (bufferAddToEnd(&driver->usart_hl->rx_buf, ucByte ) == BUFFER_RESULT_ERROR)		// error add new data
+			{
+				bufferFlush(&driver->usart_hl->rx_buf);		// clear buffer data
+				driver->eRcvState = STATE_RX_ERROR;
+			}else
+			{
+				driver->eRcvState = STATE_RX_RCV;
+			}
+			break;
+			// We are currently receiving a frame. Reset the timer after
+			// every character received. If more than the maximum possible
+			// number of bytes in a modbus frame is received the frame is  ignored.
+		case STATE_RX_RCV:
+			if (bufferAddToEnd(&driver->usart_hl->rx_buf, ucByte ) == BUFFER_RESULT_ERROR)		// error add new data
+			{
+				bufferFlush(&driver->usart_hl->rx_buf);		// clear buffer data
+				driver->eRcvState = STATE_RX_ERROR;
+			}else
+			{
+				driver->eRcvState = STATE_RX_RCV;
+			}
+			break;
+	}
+
+	// Enable t3.5 timers.
+	usart_enable_rx_timeout(driver->usart_hl->usart );
+	usart_enable_rx_timeout_interrupt(driver->usart_hl->usart);
 }
 
 
@@ -313,23 +227,22 @@ void MB_USART_ISR_FN(void *arg)
 	// Read data register not empty flag
 	if (usart_get_flag(driver->usart_hl->usart, USART_SR_RXNE ))
 	{
-		pxMBFrameCBByteReceived(modbus);
+		xMBRTUReceiveFSM(modbus);
 	}
 	//   Transmit data register empty flag
 	if (usart_get_flag(driver->usart_hl->usart, USART_SR_TXE ))
 	{
-		pxMBFrameCBTransmitterEmpty( modbus);
+		xMBRTUTransmitFSM( modbus);
 	}
 	// Receiver timeout flag
 	if (usart_get_flag(driver->usart_hl->usart, USART_ISR_RTOF ))
 	{
 		USART_ICR(driver->usart_hl->usart) |= USART_ICR_RTOCF;
-		pxMBPortCBTimerExpired(modbus);
+		xMBRTUTimerT35Expired(modbus);
 	}
 }
 
 
-const Modbus_Interface MODBUS_INTERFACE = { xMBPortEventInit, xMBPortEventPost, xMBPortEventGet,
-				xMBPortSerialInit, vMBPortClose, vMBPortSerialEnable, xMBPortSerialGetByte, xMBPortSerialSendBuf, //xMBPortSerialPutByte,
-				xMBPortTimersInit, vMBPortTimersEnable, vMBPortTimersDisable };
+const Modbus_Interface MODBUS_INTERFACE = { xMBPortFrameReceived,
+				xMBPortInit, xMBPortStart, xMBPortStop, xMBPortSerialSendBuf };
 

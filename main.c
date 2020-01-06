@@ -40,6 +40,7 @@ DS1307_DATA 	ds1307_data;
 
 MODBUS			modbus_pr;
 MB_Serial_Driver	mb_serial_drv;
+static uint8_t 		mb_packet_buf[128];
 
 extern uint16_t   usRegHoldingBuf[REG_HOLDING_NREGS];
 extern uint16_t   usRegInputBuf[REG_INPUT_NREGS];
@@ -316,9 +317,10 @@ void init_modbus(void)
 
 	mb_serial_drv.interface = MODBUS_INTERFACE;
 	modbus_pr.driver = (Modbus_Interface*)&mb_serial_drv;
+	modbus_pr.packet_buf = mb_packet_buf;
 
 	/* Select either ASCII or RTU Mode. */
-	eMBInit(&modbus_pr, MB_RTU, 0x0A );
+	eMBInit(&modbus_pr, 0x0A );
 
 	/* Initialize the holding register values before starting the
 	 * Modbus stack
