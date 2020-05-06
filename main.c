@@ -42,8 +42,11 @@ MODBUS			modbus_pr;
 MB_Serial_Driver	mb_serial_drv;
 static uint8_t 		mb_packet_buf[128];
 
+
 extern uint16_t   usRegHoldingBuf[REG_HOLDING_NREGS];
 extern uint16_t   usRegInputBuf[REG_INPUT_NREGS];
+uint16_t			mb_minutes; 	/*!< Minutes parameter, from 00 to 59 */
+uint16_t 		mb_hours;   		/*!< Hours parameter, 24Hour mode, 00 to 23 */
 
 uint16_t cur_temp=0;
 
@@ -202,6 +205,16 @@ void vIndDataOutTask(void *pvParameters) //  ~ 21 * 4  bytes of stack used
 			DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data);
 		}
 
+		// update time from modbus master
+		if ( (mb_minutes !=usRegHoldingBuf[0]) ||(mb_hours !=usRegHoldingBuf[1]) )
+		{
+			mb_minutes = usRegHoldingBuf[0];
+			mb_hours = usRegHoldingBuf[1];
+			ds1307_data.hours = uint32_to_bcd(mb_hours);
+			ds1307_data.minutes = uint32_to_bcd(mb_minutes);
+			DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data);
+		}
+
 
 		if (tcnt < 20)			// 10s
 		{
@@ -320,7 +333,7 @@ void init_modbus(void)
 	modbus_pr.packet_buf = mb_packet_buf;
 
 	/* Select either ASCII or RTU Mode. */
-	eMBInit(&modbus_pr, 0x0A );
+	eMBInit(&modbus_pr, 11 );
 
 	/* Initialize the holding register values before starting the
 	 * Modbus stack
