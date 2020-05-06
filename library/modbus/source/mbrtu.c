@@ -2,34 +2,10 @@
  * FreeModbus Libary: A portable Modbus implementation for Modbus ASCII/RTU.
  * Copyright (c) 2006 Christian Walter <wolti@sil.at>
  * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * File: $Id: mbcrc.c,v 1.7 2007/02/18 23:50:27 wolti Exp $
- */
+  */
 
-/* ----------------------- Platform includes --------------------------------*/
-#include "port.h"
+#include "mbrtu.h"
+
 
 static const uint8_t aucCRCHi[] = {
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
@@ -43,12 +19,12 @@ static const uint8_t aucCRCHi[] = {
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
-    0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 
+    0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
-    0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 
+    0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
     0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
-    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
@@ -64,12 +40,12 @@ static const uint8_t aucCRCLo[] = {
     0x14, 0xD4, 0xD5, 0x15, 0xD7, 0x17, 0x16, 0xD6, 0xD2, 0x12, 0x13, 0xD3,
     0x11, 0xD1, 0xD0, 0x10, 0xF0, 0x30, 0x31, 0xF1, 0x33, 0xF3, 0xF2, 0x32,
     0x36, 0xF6, 0xF7, 0x37, 0xF5, 0x35, 0x34, 0xF4, 0x3C, 0xFC, 0xFD, 0x3D,
-    0xFF, 0x3F, 0x3E, 0xFE, 0xFA, 0x3A, 0x3B, 0xFB, 0x39, 0xF9, 0xF8, 0x38, 
+    0xFF, 0x3F, 0x3E, 0xFE, 0xFA, 0x3A, 0x3B, 0xFB, 0x39, 0xF9, 0xF8, 0x38,
     0x28, 0xE8, 0xE9, 0x29, 0xEB, 0x2B, 0x2A, 0xEA, 0xEE, 0x2E, 0x2F, 0xEF,
     0x2D, 0xED, 0xEC, 0x2C, 0xE4, 0x24, 0x25, 0xE5, 0x27, 0xE7, 0xE6, 0x26,
     0x22, 0xE2, 0xE3, 0x23, 0xE1, 0x21, 0x20, 0xE0, 0xA0, 0x60, 0x61, 0xA1,
     0x63, 0xA3, 0xA2, 0x62, 0x66, 0xA6, 0xA7, 0x67, 0xA5, 0x65, 0x64, 0xA4,
-    0x6C, 0xAC, 0xAD, 0x6D, 0xAF, 0x6F, 0x6E, 0xAE, 0xAA, 0x6A, 0x6B, 0xAB, 
+    0x6C, 0xAC, 0xAD, 0x6D, 0xAF, 0x6F, 0x6E, 0xAE, 0xAA, 0x6A, 0x6B, 0xAB,
     0x69, 0xA9, 0xA8, 0x68, 0x78, 0xB8, 0xB9, 0x79, 0xBB, 0x7B, 0x7A, 0xBA,
     0xBE, 0x7E, 0x7F, 0xBF, 0x7D, 0xBD, 0xBC, 0x7C, 0xB4, 0x74, 0x75, 0xB5,
     0x77, 0xB7, 0xB6, 0x76, 0x72, 0xB2, 0xB3, 0x73, 0xB1, 0x71, 0x70, 0xB0,
@@ -95,3 +71,105 @@ uint16_t usMBCRC16(uint8_t *pucFrame, uint16_t usLen)
 	}
 	return (uint16_t) (ucCRCHi << 8 | ucCRCLo);
 }
+
+
+eMBErrorCode eMBRTUInit(MODBUS *modbus)
+{
+	eMBErrorCode eStatus = MB_ENOERR;
+	uint32_t usTimerT35_50us;
+
+//	ENTER_CRITICAL_SECTION( );
+
+	/* Modbus RTU uses 8 Databits. */
+	if (modbus->driver->xMBPortInit(modbus->driver ) != true)
+	{
+		eStatus = MB_EPORTERR;
+	} else
+	{
+
+	/*
+		// If baudrate > 19200 then we should use the fixed timer values
+		// t35 = 1750us. Otherwise t35 must be 3.5 times the character time.
+
+		if (ulBaudRate > 19200)
+		{
+			usTimerT35_50us = 35; // 1800us.
+		} else
+		{
+			// The timer reload value for a character is given by:
+			 // ChTimeValue = Ticks_per_1s / ( Baudrate / 11 ) = 11 * Ticks_per_1s / Baudrate = 220000 / Baudrate
+			 // The reload for t3.5 is 1.5 times this value and similary for t3.5.
+
+			usTimerT35_50us = (7UL * 220000UL) / (2UL * ulBaudRate);
+		}
+	*/
+
+	}
+//	EXIT_CRITICAL_SECTION( );
+
+	return eStatus;
+}
+
+
+eMBErrorCode eMBRTUReceive(MODBUS *modbus, uint8_t *pucRcvAddress, uint8_t **pucFrame, uint16_t *pusLength)
+{
+	bool xFrameReceived = false;
+	eMBErrorCode eStatus = MB_ENOERR;
+
+	ENTER_CRITICAL_SECTION( );
+//    assert( usRcvBufferPos < MB_SER_PDU_SIZE_MAX );
+
+	// Length and CRC check
+	if ((modbus->packet_size >= MB_SER_PDU_SIZE_MIN) && (usMBCRC16( modbus->packet_buf, modbus->packet_size ) == 0) )
+	{
+		// Save the address field. All frames are passed to the upper layed and the decision if a frame is used is done there.
+		*pucRcvAddress = modbus->packet_buf[MB_SER_PDU_ADDR_OFF];
+
+		// Total length of Modbus-PDU is Modbus-Serial-Line-PDU minus size of address field and CRC checksum.
+		*pusLength = (uint16_t) (modbus->packet_size - MB_SER_PDU_PDU_OFF - MB_SER_PDU_SIZE_CRC);
+
+		// Return the start of the Modbus PDU to the caller.
+		*pucFrame = (uint8_t*) &modbus->packet_buf[MB_SER_PDU_PDU_OFF];
+		xFrameReceived = true;
+	} else
+	{
+		eStatus = MB_EIO;
+	}
+
+	EXIT_CRITICAL_SECTION( );
+	return eStatus;
+}
+
+
+eMBErrorCode eMBRTUSend(MODBUS *modbus, const uint8_t *pucFrame, uint16_t usLength)
+{
+	uint8_t *pucSndBufferCur;
+	uint8_t usSndBufferCount;
+	eMBErrorCode eStatus;
+	uint16_t usCRC16;
+
+	// First byte before the Modbus-PDU is the slave address.
+	pucSndBufferCur = (uint8_t*) pucFrame - 1;
+	usSndBufferCount = 1;
+
+	// Now copy the Modbus-PDU into the Modbus-Serial-Line-PDU.
+	pucSndBufferCur[MB_SER_PDU_ADDR_OFF] = modbus->ucMBAddress;
+	usSndBufferCount += usLength;
+
+	// Calculate CRC16 checksum for Modbus-Serial-Line-PDU.
+	usCRC16 = usMBCRC16((uint8_t*) pucSndBufferCur, usSndBufferCount );
+	pucSndBufferCur[usSndBufferCount++] = (uint8_t) (usCRC16 & 0xFF);
+	pucSndBufferCur[usSndBufferCount++] = (uint8_t) (usCRC16 >> 8);
+
+
+	// Activate the transmitter.
+	if (modbus->driver->xMBPortSerialSendBuf(modbus->driver, pucSndBufferCur, usSndBufferCount ))
+	{
+		eStatus = MB_ENOERR;
+	}else
+		eStatus = MB_EIO;
+
+	return eStatus;
+}
+
+

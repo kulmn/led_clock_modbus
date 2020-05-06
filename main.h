@@ -21,7 +21,6 @@
 #include <libopencm3/stm32/pwr.h>
 #include <libopencm3/stm32/spi.h>
 
-#include <protocols/modbus.h>
 #include <protocols/modbus_serial_drv.h>
 #include <modbus_cb.h>
 
