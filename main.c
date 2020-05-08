@@ -1,70 +1,37 @@
-/*
- * main.c
- *
- *  Created on: 08 сент. 2014 г.
- *      Author: yura
- */
-
 #include "main.h"
 
 
-
-//xQueueHandle xTemperQueue;
 SemaphoreHandle_t xButtons_Smphr[4];
 const GPIO_HW_PIN button_pins[4] = { {BUTTN_HOURS_UP}, {BUTTN_HOURS_DN}, {BUTTN_MINUTES_UP}, {BUTTN_MINUTES_DN} };
-
-USART_HAL usart_1;
 
 #define USART1_RX_BUF_SIZE	32
 #define USART1_TX_BUF_SIZE	32
 
-static uint8_t usart1_rx_buf[USART1_RX_BUF_SIZE];
-static uint8_t usart1_tx_buf[USART1_TX_BUF_SIZE];
+USART_HAL 			usart_1;
+static uint8_t 		usart1_rx_buf[USART1_RX_BUF_SIZE];
+static uint8_t 		usart1_tx_buf[USART1_TX_BUF_SIZE];
 
-TIMER_HL delay_timer;
-OWI t_int_sensor, t_ext_sensor;
-OWI_Driver t_int_sensor_driver, t_ext_sensor_driver;
-DS18B20_TypeDef int_cur_temp, ext_cur_temp;
+TIMER_HL 			delay_timer;
+OWI 				t_int_sensor, t_ext_sensor;
+OWI_Driver 			t_int_sensor_driver, t_ext_sensor_driver;
+DS18B20_TypeDef 	int_cur_temp, ext_cur_temp;
 
+LED7SEG			led_ind;
+LED7SEG_SR_Driver	led_driver;
+static uint8_t 		led7seg_buf[4];
 
-LED7SEG led_ind;
-//LED7SEG_Pin_Driver led_driver;
-LED7SEG_SR_Driver led_driver;
-static uint8_t led7seg_buf[4];
-
-
-DS1307		rtc_ds1307;
-DS1307_DATA 	ds1307_data;
-//SemaphoreHandle_t xDS1307_Mutex;
-
+DS1307				rtc_ds1307;
+DS1307_DATA 		ds1307_data;
 
 MODBUS			modbus_pr;
 MB_Serial_Driver	mb_serial_drv;
 static uint8_t 		mb_packet_buf[128];
+extern uint16_t		usRegHoldingBuf[REG_HOLDING_NREGS];
+extern uint16_t		usRegInputBuf[REG_INPUT_NREGS];
 
+uint16_t 			mb_time_in_munutes, loc_time_in_munutes;
+uint16_t 			cur_temp=0;
 
-extern uint16_t   usRegHoldingBuf[REG_HOLDING_NREGS];
-extern uint16_t   usRegInputBuf[REG_INPUT_NREGS];
-uint16_t			mb_minutes; 	/*!< Minutes parameter, from 00 to 59 */
-uint16_t 		mb_hours;   		/*!< Hours parameter, 24Hour mode, 00 to 23 */
-
-uint16_t cur_temp=0;
-
-
-
-void vGreenLedTask (void *pvParameters)
-{
-    while(1)
-    {
-//    	gpio_toggle(LED_GREEN);	/* LED on/off */
-//    	usart_send_blocking(USART2,  '0');
-    	vTaskDelay(500);
-//    	gpio_clear(LED_GREEN);
-//    	vTaskDelay(500);
-
-     }
-    vTaskDelete(NULL);
-}
 
 /******************************************************************************/
 void vGetTempTask(void *pvParameters)
@@ -75,44 +42,13 @@ void vGetTempTask(void *pvParameters)
 
 	while (1)
 	{
-
 		DS18B20_Read_Struct(&t_int_sensor, &int_cur_temp );
 		usRegInputBuf[0] = int_cur_temp.raw_value;
 
 		DS18B20_Read_Struct(&t_ext_sensor, &ext_cur_temp );
 		usRegInputBuf[1] = ext_cur_temp.raw_value;
 
-/*
-		usart_hl_send_str(&usart_1, (uint8_t *)" int sensor:");
-		usart_hl_send(&usart_1, int_cur_temp.value);
-		usart_hl_send_str(&usart_1, (uint8_t *)".");
-		usart_hl_send(&usart_1, int_cur_temp.tens_value);
-
-		usart_hl_send_str(&usart_1, (uint8_t *)" ext sensor:");
-		usart_hl_send(&usart_1, ext_cur_temp.value);
-		usart_hl_send_str(&usart_1, (uint8_t *)".");
-		usart_hl_send(&usart_1, ext_cur_temp.tens_value);
-
-
-//		uint8_t clk_data = DS1307_GetReg( DS1307_MINUTES, 0);
-		usart_hl_send_str(&usart_1, (uint8_t *)" ds1338: ");
-//		usart_hl_send(&usart_1, clk_data);
-
-		usart_hl_send(&usart_1, bcd_to_uint8(ds1307_data.minutes) );
-
-
-//		uint8_t lcd_line[17];
-//		rtc_hl_get_time_string(lcd_line, RTC_HL_HMS);
-//		usart_hl_send_str(&usart_1, lcd_line);
-*/
-
-
-//		led7seg_write_ds18b20_temp(&led_ind, int_cur_temp.value, int_cur_temp.tens_value);
-
-//    	xStatus = xQueueSendToBack( xTemperQueue, &cur_temper, 0 );
-//    	if( xStatus != pdPASS )  { }
-
-		vTaskDelay(1500 );
+		vTaskDelay(1000 );
 	}
 	vTaskDelete(NULL );
 }
@@ -161,7 +97,7 @@ void vModbusTask(void *pvParameters)
 
 
 /******************************************************************************/
-void vIndDataOutTask(void *pvParameters) //  ~ 21 * 4  bytes of stack used
+void vIndDataOutTask(void *pvParameters)
 {
 	TickType_t xLastWakeTime;
 	portBASE_TYPE xStatus;
@@ -206,16 +142,24 @@ void vIndDataOutTask(void *pvParameters) //  ~ 21 * 4  bytes of stack used
 		}
 
 		// update time from modbus master
-		if ( (mb_minutes !=usRegHoldingBuf[0]) ||(mb_hours !=usRegHoldingBuf[1]) )
+		uint16_t new_mb_time_in_munutes = (usRegHoldingBuf[0] * 60) + usRegHoldingBuf[1];
+
+		if (new_mb_time_in_munutes != mb_time_in_munutes)
 		{
-			mb_minutes = usRegHoldingBuf[0];
-			mb_hours = usRegHoldingBuf[1];
-			ds1307_data.hours = uint32_to_bcd(mb_hours);
-			ds1307_data.minutes = uint32_to_bcd(mb_minutes);
-			DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data);
+			mb_time_in_munutes = new_mb_time_in_munutes;
+			loc_time_in_munutes = (ds1307_data.hours * 60) + ds1307_data.minutes;
+
+			int16_t diff = mb_time_in_munutes - loc_time_in_munutes;
+			if (diff > -100 && diff < 100)
+			{
+				ds1307_data.hours = uint32_to_bcd(usRegHoldingBuf[0] );
+				ds1307_data.minutes = uint32_to_bcd(usRegHoldingBuf[1] );
+				DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data );
+			}
 		}
 
 
+		// update indicator data
 		if (tcnt < 20)			// 10s
 		{
 			if (dot_msk)	dot_msk = 0;
@@ -257,7 +201,7 @@ void vLed7segUpdateTask(void *pvParameters) 			//  ~ 21 * 4  bytes of stack used
 }
 
 
-
+/******************************************************************************/
 void init_led7seg(void)
 {
 	const GPIO_HW_PIN pins[LED7SEG_DIGITS_NUM] = { { LED_IND_DIG_0 }, { LED_IND_DIG_1 }, { LED_IND_DIG_2 }, { LED_IND_DIG_3 }  };
@@ -267,25 +211,10 @@ void init_led7seg(void)
 	led_ind.buffer = (uint8_t *)led7seg_buf;
 	led_ind.driver = (LED7SEG_Interface*) &led_driver;
 
-
-	for (uint8_t i = 0; i < led_ind.num_digits; i++)  led_driver.digit[i] = pins[i];
-
-
-//	led_driver.interface = LED7SEG_PIN_INTERFACE;
+	for (uint8_t i = 0; i < led_ind.num_digits; i++)
+		led_driver.digit[i] = pins[i];
 
 	led_driver.interface = LED7SEG_SR_INTERFACE;
-
-	/*
-	led_driver.seg_port = PORT(LED_IND_SEG_A);
-	led_driver.seg_masks[LED7SEG_SEG_A] = PIN(LED_IND_SEG_A);
-	led_driver.seg_masks[LED7SEG_SEG_B] = PIN(LED_IND_SEG_B);
-	led_driver.seg_masks[LED7SEG_SEG_C] = PIN(LED_IND_SEG_C);
-	led_driver.seg_masks[LED7SEG_SEG_D] = PIN(LED_IND_SEG_D);
-	led_driver.seg_masks[LED7SEG_SEG_E] = PIN(LED_IND_SEG_E);
-	led_driver.seg_masks[LED7SEG_SEG_F] = PIN(LED_IND_SEG_F);
-	led_driver.seg_masks[LED7SEG_SEG_G] = PIN(LED_IND_SEG_G);
-	led_driver.seg_masks[LED7SEG_SEG_H] = PIN(LED_IND_SEG_H);
-*/
 	led_driver.seg_masks[LED7SEG_SEG_A] = LED_IND_SEG_A;
 	led_driver.seg_masks[LED7SEG_SEG_B] = (LED_IND_SEG_B);
 	led_driver.seg_masks[LED7SEG_SEG_C] = (LED_IND_SEG_C);
@@ -296,7 +225,6 @@ void init_led7seg(void)
 	led_driver.seg_masks[LED7SEG_SEG_H] = (LED_IND_SEG_H);
 
 	led7seg_init(&led_ind);
-
 }
 
 
@@ -305,6 +233,8 @@ void init_modbus(void)
 {
 
 	USART_Init		init_data;
+
+	rcc_periph_clock_enable(RCC_USART1);
 
 	init_data.usart = USART1;
 	init_data.baudrate= 9600;
@@ -315,44 +245,18 @@ void init_modbus(void)
 	init_data.tx_buf_ptr = (uint8_t *)usart1_tx_buf;
 	init_data.rx_buf_size = USART1_RX_BUF_SIZE;
 	init_data.tx_buf_size = USART1_TX_BUF_SIZE;
-
-	rcc_periph_clock_enable(RCC_USART1);
 	uart_init(&usart_1, &init_data);
 
 	usart_disable_rx_interrupt(usart_1.usart );
 	usart_hl_set_irq_handler(&usart_1, MB_USART_ISR_FN, &modbus_pr);
-
-
-	mb_serial_drv.usart_hl = &usart_1;
-
 	nvic_enable_irq(NVIC_USART1_IRQ);
 
-
 	mb_serial_drv.interface = MODBUS_INTERFACE;
+	mb_serial_drv.usart_hl = &usart_1;
 	modbus_pr.driver = (Modbus_Interface*)&mb_serial_drv;
 	modbus_pr.packet_buf = mb_packet_buf;
-
-	/* Select either ASCII or RTU Mode. */
 	eMBInit(&modbus_pr, 11 );
-
-	/* Initialize the holding register values before starting the
-	 * Modbus stack
-	 */
-	for (uint16_t i = 0; i < REG_HOLDING_NREGS; i++)
-	{
-		usRegHoldingBuf[i] = (unsigned short) i;
-	}
-	/* Initialize the input register values before starting the
-	 * Modbus stack
-	 */
-	for (uint16_t i = 0; i < REG_INPUT_NREGS; i++)
-	{
-		usRegInputBuf[i] = (unsigned short) i;
-	}
-
-	/* Enable the Modbus Protocol Stack. */
-	eMBEnable(&modbus_pr);
-
+	eMBEnable(&modbus_pr);	// Enable the Modbus Protocol Stack.
 }
 
 
@@ -400,28 +304,6 @@ void init_owi(void)
 
 }
 
-/******************************************************************************
-void usart_setup(void)
-{
-	USART_Init		init_data;
-
-	init_data.usart = USART1;
-	init_data.baudrate= 9600;
-	init_data.parity = USART_PARITY_NONE;
-	init_data.usart_tx = (GPIO_HW_PIN) {USART1_TX_PIN};
-	init_data.usart_rx = (GPIO_HW_PIN) {USART1_RX_PIN};
-	init_data.rx_buf_ptr = (uint8_t *)usart1_rx_buf;
-	init_data.tx_buf_ptr = (uint8_t *)usart1_tx_buf;
-	init_data.rx_buf_size = USART1_RX_BUF_SIZE;
-	init_data.tx_buf_size = USART1_TX_BUF_SIZE;
-
-	rcc_periph_clock_enable(RCC_USART1);
-	uart_init(&usart_1, &init_data);
-	// Enable the usart1 interrupt.
-	usart_hl_set_irq_handler(&usart_1, def_usart_irq_fn, &usart_1);
-	nvic_enable_irq(NVIC_USART1_IRQ);
-}
-
 /******************************************************************************/
 static void system_clock_setup(void)
 {
@@ -464,60 +346,31 @@ void periphery_init()
 //	rcc_periph_clock_enable(RCC_GPIOD);
 	rcc_periph_clock_enable(RCC_GPIOF);
 
-//	gpio_mode_setup(PORT(LED_GREEN), GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, PIN(LED_GREEN));
-//	gpio_set(PORT(LED_GREEN), PIN(LED_GREEN));
-
-//	gpio_mode_setup(PORT(LED_GREEN), GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, PIN(LED_GREEN));
-//	gpio_mode_setup(PORT(MOTOR), GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, PIN(MOTOR));
-
 	// Buttons init
 	for (uint8_t i=0; i<4; i++)
 		gpio_mode_setup(button_pins[i].port, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, button_pins[i].pins);
-
 
 	delay_timer_init();
 	init_owi();
 	DS18B20_Init(&t_int_sensor, DS18B20_12BIT_RES);
 	DS18B20_Init(&t_ext_sensor, DS18B20_12BIT_RES);
 
-//	rtc_hl_init();
-//	rtc_hl_set_time(12,30,0);
-
-//	usart_setup();
-//	usart_hl_send_str(&usart_1, (uint8_t *)"MQTT ok");
-
-
-//	const GPIO_HW_PIN pins[LED7SEG_DIGITS_NUM] = { { LED_IND_DIG_0 }, { LED_IND_DIG_1 }, { LED_IND_DIG_2 } };
-
 	rtc_ds1307.SCL = (GPIO_HW_PIN) {I2C1_SCL};
 	rtc_ds1307.SDA = (GPIO_HW_PIN) {I2C1_SDA};
-
 	DS1307_Init(&rtc_ds1307, I2C1, RCC_I2C1, 8);
 
-//	DS1307_Init();
-//	xSemaphoreGive(xDS1307_update );
-
 	init_modbus();
-
 	init_led7seg();
-
-
 }
 
 
 void vApplicationIdleHook( void )
 {
-//	gpio_clear(LED_GREEN);
-//	GPIO_SET(LED_GREEN);
-//	GPIO_CLR(LED_YELLOW);
 
 }
 
 void vApplicationTickHook( void )
 {
-//	gpio_set(LED_GREEN);
-//	GPIO_CLR(LED_GREEN);
-//	GPIO_SET(LED_YELLOW);
 
 }
 
@@ -528,14 +381,12 @@ int main(void)
 //	xTemperQueue=xQueueCreate( 5, sizeof( DS18B20_TypeDef ));
 	xTaskCreate(vGetTempTask,(signed char*)"", configMINIMAL_STACK_SIZE * 2 ,NULL, tskIDLE_PRIORITY + 1, NULL);
 	xTaskCreate(vGetButtonStateTask,(signed char*)"", configMINIMAL_STACK_SIZE * 2,	NULL, tskIDLE_PRIORITY + 1, NULL);
-//	xTaskCreate(vGreenLedTask,(signed char*)"", configMINIMAL_STACK_SIZE,	NULL, tskIDLE_PRIORITY + 1, NULL);
 
 	xTaskCreate(vIndDataOutTask,(signed char*)"", configMINIMAL_STACK_SIZE * 2,	NULL, tskIDLE_PRIORITY + 1, NULL);
 	xTaskCreate(vLed7segUpdateTask,(signed char*)"", configMINIMAL_STACK_SIZE * 1,	NULL, tskIDLE_PRIORITY + 1, NULL);
 
 	xTaskCreate(vModbusTask,(signed char*)"", configMINIMAL_STACK_SIZE * 1,	NULL, tskIDLE_PRIORITY + 1, NULL);
 	vTaskStartScheduler();
-
 
 	for( ;; );
 }

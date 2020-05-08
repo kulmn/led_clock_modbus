@@ -9,7 +9,6 @@
 #define MAIN_H_
 
 
-#include <indicators/led7seg_driver_pin.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <libopencm3/stm32/rcc.h>
@@ -17,14 +16,7 @@
 #include <libopencm3/stm32/flash.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
-#include <libopencm3/stm32/rtc.h>
-#include <libopencm3/stm32/pwr.h>
 #include <libopencm3/stm32/spi.h>
-
-#include <protocols/modbus_serial_drv.h>
-#include <modbus_cb.h>
-
-
 
 // FreeRTOS inc
 #include "FreeRTOS.h"
@@ -32,10 +24,11 @@
 #include "queue.h"
 #include "semphr.h"
 
+#include <protocols/modbus_serial_drv.h>
+#include <modbus_cb.h>
 
 #include "convert_fn.h"
 #include <usart_hl.h>
-#include <rtc_hal.h>
 #include "timer_hal.h"
 
 #include "owi/owi.h"
@@ -43,7 +36,6 @@
 #include "owi/ds18b20.h"
 
 #include "indicators/led7seg.h"
-#include "indicators/led7seg_driver_pin.h"
 #include "indicators/led7seg_driver_sr.h"
 
 #include <rtc/ds1307.h>
@@ -85,17 +77,8 @@
 #define USART1_TX_PIN			GPIOB, GPIO6, GPIO_AF0
 #define USART1_RX_PIN			GPIOB, GPIO7, GPIO_AF0
 
-#define MB_USART_TX_PIN		GPIOB, GPIO6, GPIO_AF0
-#define MB_USART_RX_PIN		GPIOB, GPIO7, GPIO_AF0
-
-//#define USART2_TX_PIN	GPIOA, GPIO2
-//#define USART2_RX_PIN	GPIOA, GPIO3
-
 #define I2C1_SCL			GPIOA, GPIO9, GPIO_AF4
 #define I2C1_SDA			GPIOA, GPIO10, GPIO_AF4
-
-
-void periphery_init(void);
 
 
 
