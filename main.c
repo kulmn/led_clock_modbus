@@ -29,7 +29,7 @@ static uint8_t 		mb_packet_buf[128];
 extern uint16_t		usRegHoldingBuf[REG_HOLDING_NREGS];
 extern uint16_t		usRegInputBuf[REG_INPUT_NREGS];
 
-uint16_t 			mb_time_in_munutes, loc_time_in_munutes;
+uint16_t 			mb_time_in_munutes = 0, loc_time_in_munutes = 0;
 uint16_t 			cur_temp=0;
 
 
@@ -256,6 +256,10 @@ void init_modbus(void)
 	modbus_pr.driver = (Modbus_Interface*)&mb_serial_drv;
 	modbus_pr.packet_buf = mb_packet_buf;
 	eMBInit(&modbus_pr, 11 );
+
+	usRegHoldingBuf[0] = 0;
+	usRegHoldingBuf[1] = 0;
+
 	eMBEnable(&modbus_pr);	// Enable the Modbus Protocol Stack.
 }
 
