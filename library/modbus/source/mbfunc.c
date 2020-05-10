@@ -108,7 +108,7 @@ eMBException eMBFuncWriteHoldingRegister(uint8_t *pucFrame, uint16_t *usLen)
 	{
 		usRegAddress = (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_ADDR_OFF] << 8);
 		usRegAddress |= (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_ADDR_OFF + 1]);
-		usRegAddress++;
+		//usRegAddress++;
 
 		/* Make callback to update the value. */
 		eRegStatus = eMBRegHoldingCB(&pucFrame[MB_PDU_FUNC_WRITE_VALUE_OFF], usRegAddress, 1, MB_REG_WRITE );
@@ -141,7 +141,7 @@ eMBException eMBFuncWriteMultipleHoldingRegister(uint8_t *pucFrame, uint16_t *us
 	{
 		usRegAddress = (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_MUL_ADDR_OFF] << 8);
 		usRegAddress |= (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_MUL_ADDR_OFF + 1]);
-		usRegAddress++;
+		//usRegAddress++;
 
 		usRegCount = (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_MUL_REGCNT_OFF] << 8);
 		usRegCount |= (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_MUL_REGCNT_OFF + 1]);
@@ -193,7 +193,7 @@ eMBException eMBFuncReadHoldingRegister(uint8_t *pucFrame, uint16_t *usLen)
 	{
 		usRegAddress = (uint16_t) (pucFrame[MB_PDU_FUNC_READ_ADDR_OFF] << 8);
 		usRegAddress |= (uint16_t) (pucFrame[MB_PDU_FUNC_READ_ADDR_OFF + 1]);
-		usRegAddress++;
+		//usRegAddress++;
 
 		usRegCount = (uint16_t) (pucFrame[MB_PDU_FUNC_READ_REGCNT_OFF] << 8);
 		usRegCount = (uint16_t) (pucFrame[MB_PDU_FUNC_READ_REGCNT_OFF + 1]);
@@ -254,7 +254,7 @@ eMBException eMBFuncReadWriteMultipleHoldingRegister(uint8_t *pucFrame, uint16_t
 	{
 		usRegReadAddress = (uint16_t) (pucFrame[MB_PDU_FUNC_READWRITE_READ_ADDR_OFF] << 8U);
 		usRegReadAddress |= (uint16_t) (pucFrame[MB_PDU_FUNC_READWRITE_READ_ADDR_OFF + 1]);
-		usRegReadAddress++;
+		//usRegReadAddress++;
 
 		usRegReadCount = (uint16_t) (pucFrame[MB_PDU_FUNC_READWRITE_READ_REGCNT_OFF] << 8U);
 		usRegReadCount |= (uint16_t) (pucFrame[MB_PDU_FUNC_READWRITE_READ_REGCNT_OFF + 1]);
@@ -323,7 +323,7 @@ eMBException eMBFuncReadDiscreteInputs(uint8_t *pucFrame, uint16_t *usLen)
 	{
 		usRegAddress = (uint16_t) (pucFrame[MB_PDU_FUNC_READ_ADDR_OFF] << 8);
 		usRegAddress |= (uint16_t) (pucFrame[MB_PDU_FUNC_READ_ADDR_OFF + 1]);
-		usRegAddress++;
+//		usRegAddress++;
 
 		usDiscreteCnt = (uint16_t) (pucFrame[MB_PDU_FUNC_READ_DISCCNT_OFF] << 8);
 		usDiscreteCnt |= (uint16_t) (pucFrame[MB_PDU_FUNC_READ_DISCCNT_OFF + 1]);
@@ -396,7 +396,7 @@ eMBException eMBFuncReadCoils(uint8_t *pucFrame, uint16_t *usLen)
 	{
 		usRegAddress = (uint16_t) (pucFrame[MB_PDU_FUNC_READ_ADDR_OFF] << 8);
 		usRegAddress |= (uint16_t) (pucFrame[MB_PDU_FUNC_READ_ADDR_OFF + 1]);
-		usRegAddress++;
+//		usRegAddress++;
 
 		usCoilCount = (uint16_t) (pucFrame[MB_PDU_FUNC_READ_COILCNT_OFF] << 8);
 		usCoilCount |= (uint16_t) (pucFrame[MB_PDU_FUNC_READ_COILCNT_OFF + 1]);
@@ -467,7 +467,7 @@ eMBException eMBFuncWriteCoil(uint8_t *pucFrame, uint16_t *usLen)
 	{
 		usRegAddress = (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_ADDR_OFF] << 8);
 		usRegAddress |= (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_ADDR_OFF + 1]);
-		usRegAddress++;
+//		usRegAddress++;
 
 		if ((pucFrame[MB_PDU_FUNC_WRITE_VALUE_OFF + 1] == 0x00) && ((pucFrame[MB_PDU_FUNC_WRITE_VALUE_OFF] == 0xFF) || (pucFrame[MB_PDU_FUNC_WRITE_VALUE_OFF] == 0x00)))
 		{
@@ -515,7 +515,7 @@ eMBException eMBFuncWriteMultipleCoils(uint8_t *pucFrame, uint16_t *usLen)
 	{
 		usRegAddress = (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_MUL_ADDR_OFF] << 8);
 		usRegAddress |= (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_MUL_ADDR_OFF + 1]);
-		usRegAddress++;
+//		usRegAddress++;
 
 		usCoilCnt = (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_MUL_COILCNT_OFF] << 8);
 		usCoilCnt |= (uint16_t) (pucFrame[MB_PDU_FUNC_WRITE_MUL_COILCNT_OFF + 1]);

@@ -75,29 +75,30 @@ void led7seg_write_ds18b20_temp(LED7SEG *led_ind, int8_t value, uint8_t tens_val
 
 	if (value < 0)
 	{
-		led_ind->buffer[2]=SEG_G_MASK;
+		led_ind->buffer[3]=SEG_G_MASK;
 		bcd_temper = uint32_to_bcd((~value)+1);
 
 		if (value > -10)
 		{
-			led_ind->buffer[0] = number[tens_value];
-			led_ind->buffer[1] = number[(bcd_temper & 0x000F)];
-			led_ind->buffer[1] |= SEG_H_MASK;
+			led_ind->buffer[1] = number[tens_value];
+			led_ind->buffer[2] = number[(bcd_temper & 0x000F)];
+			led_ind->buffer[2] |= SEG_H_MASK;
 		}else
 		{
-			led_ind->buffer[0] = number[(bcd_temper & 0x000F)];
-			led_ind->buffer[1] = number[(bcd_temper & 0x00F0)>>4];
+			led_ind->buffer[1] = number[(bcd_temper & 0x000F)];
+			led_ind->buffer[2] = number[(bcd_temper & 0x00F0)>>4];
 		}
 
 	}else
 	{
 		bcd_temper = uint32_to_bcd(value);
-		led_ind->buffer[0] = number[tens_value];
-		led_ind->buffer[1] = number[(bcd_temper & 0x000F)];
-		if ((bcd_temper & 0x00F0)>>4)	led_ind->buffer[2] = number[(bcd_temper & 0x00F0)>>4];
-		else led_ind->buffer[2]=0;
-		led_ind->buffer[1] |= SEG_H_MASK;
+		led_ind->buffer[1] = number[tens_value];
+		led_ind->buffer[2] = number[(bcd_temper & 0x000F)];
+		if ((bcd_temper & 0x00F0)>>4)	led_ind->buffer[3] = number[(bcd_temper & 0x00F0)>>4];
+		else led_ind->buffer[3]=0;
+		led_ind->buffer[2] |= SEG_H_MASK;
 	}
+	led_ind->buffer[0] |= SEG_H_MASK;
 }
 
 

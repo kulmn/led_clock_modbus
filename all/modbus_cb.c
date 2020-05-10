@@ -28,7 +28,7 @@ eMBErrorCode eMBRegInputCB(uint8_t * pucRegBuffer, uint16_t usAddress, uint16_t 
 	eMBErrorCode eStatus = MB_ENOERR;
 	int iRegIndex;
 
-	usart_send(USART2, usNRegs);
+//	usart_send(USART2, usNRegs);
 
 	if ((usAddress >= REG_INPUT_START) && (usAddress + usNRegs <= REG_INPUT_START + REG_INPUT_NREGS))
 	{

@@ -147,10 +147,10 @@ void vIndDataOutTask(void *pvParameters)
 		if (new_mb_time_in_munutes != mb_time_in_munutes)
 		{
 			mb_time_in_munutes = new_mb_time_in_munutes;
-			loc_time_in_munutes = (ds1307_data.hours * 60) + ds1307_data.minutes;
+			loc_time_in_munutes = (bcd_to_uint8(ds1307_data.hours) * 60) + bcd_to_uint8(ds1307_data.minutes);
 
 			int16_t diff = mb_time_in_munutes - loc_time_in_munutes;
-			if (diff > -100 && diff < 100)
+			if ((diff > -100) && (diff < 100))
 			{
 				ds1307_data.hours = uint32_to_bcd(usRegHoldingBuf[0] );
 				ds1307_data.minutes = uint32_to_bcd(usRegHoldingBuf[1] );
@@ -163,7 +163,7 @@ void vIndDataOutTask(void *pvParameters)
 		if (tcnt < 20)			// 10s
 		{
 			if (dot_msk)	dot_msk = 0;
-			else dot_msk = 0x04;
+			else dot_msk = 0x06;
 
 			led7seg_write_time(&led_ind, ds1307_data.hours, ds1307_data.minutes, dot_msk);
 		}else
@@ -189,7 +189,7 @@ void vLed7segUpdateTask(void *pvParameters) 			//  ~ 21 * 4  bytes of stack used
 {
 	TickType_t xLastWakeTime;
 	portBASE_TYPE xStatus;
-	const TickType_t xFrequency = 5;		// 200 Hz
+	const TickType_t xFrequency = 3;		// 333 Hz
 
 	xLastWakeTime = xTaskGetTickCount();
 	for( ;; )
