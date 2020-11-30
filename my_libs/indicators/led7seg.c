@@ -102,15 +102,14 @@ void led7seg_write_ds18b20_temp(LED7SEG *led_ind, int8_t value, uint8_t tens_val
 }
 
 
-
 /******************************************************************************/
-void led7seg_write_time(LED7SEG *led_ind, uint8_t bcd_hours, uint8_t bcd_minutes, uint8_t dots_mask)
+void led7seg_write_two_bcd_bytes(LED7SEG *led_ind, uint8_t bcd_hight, uint8_t bcd_low, uint8_t dots_mask)
 {
 
-	led_ind->buffer[3] = (led_ind->buffer[3] & SEG_H_MASK) | number[bcd_hours >> 4 ];
-	led_ind->buffer[2] = (led_ind->buffer[2] & SEG_H_MASK) | number[bcd_hours & 0x0F ];
-	led_ind->buffer[1] = (led_ind->buffer[1] & SEG_H_MASK) | number[bcd_minutes >> 4 ];
-	led_ind->buffer[0] = (led_ind->buffer[0] & SEG_H_MASK) | number[bcd_minutes & 0x0F ];
+	led_ind->buffer[3] = (led_ind->buffer[3] & SEG_H_MASK) | number[bcd_hight >> 4 ];
+	led_ind->buffer[2] = (led_ind->buffer[2] & SEG_H_MASK) | number[bcd_hight & 0x0F ];
+	led_ind->buffer[1] = (led_ind->buffer[1] & SEG_H_MASK) | number[bcd_low >> 4 ];
+	led_ind->buffer[0] = (led_ind->buffer[0] & SEG_H_MASK) | number[bcd_low & 0x0F ];
 
 	for(uint8_t i=0; i < led_ind->num_digits; i++ )
 	{
@@ -120,6 +119,7 @@ void led7seg_write_time(LED7SEG *led_ind, uint8_t bcd_hours, uint8_t bcd_minutes
 }
 
 
+/******************************************************************************/
 void led7seg_write_uint(LED7SEG *led_ind, uint16_t num)
 {
 	uint16_t		bcd_num;

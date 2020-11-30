@@ -101,7 +101,7 @@ void vIndDataOutTask(void *pvParameters)
 {
 	TickType_t xLastWakeTime;
 	portBASE_TYPE xStatus;
-	const TickType_t xFrequency = 500;		//  1\2 s
+	const TickType_t xFrequency = DATA_OUT_TASK_FRQ;		//  ms
 
 	static uint16_t tcnt = 0, dot_msk = 0;
 
@@ -160,18 +160,23 @@ void vIndDataOutTask(void *pvParameters)
 
 
 		// update indicator data
-		if (tcnt < 20)			// 10s
+		if (tcnt < CLOCK_SHOW_TIME)			// s
 		{
 			if (dot_msk)	dot_msk = 0;
 			else dot_msk = 0x06;
 
-			led7seg_write_time(&led_ind, ds1307_data.hours, ds1307_data.minutes, dot_msk);
+			led7seg_write_two_bcd_bytes(&led_ind, ds1307_data.hours, ds1307_data.minutes, dot_msk);
 		}else
-			if (tcnt < 24)
+			if (tcnt < PARAM1_SHOW_TIME)
 			{
+				#if SHOW_TEMP_EXT > 0
 				led7seg_write_ds18b20_temp(&led_ind, ext_cur_temp.value, ext_cur_temp.tens_value);
+				#endif
+				#if SHOW_DATE > 0
+				led7seg_write_two_bcd_bytes(&led_ind, ds1307_data.month_day, ds1307_data.month, 0x04);
+				#endif
 			}else
-				if (tcnt < 28)
+				if (tcnt < PARAM2_SHOW_TIME)
 				{
 					led7seg_write_ds18b20_temp(&led_ind, int_cur_temp.value, ext_cur_temp.tens_value);
 				}else tcnt = 0;
