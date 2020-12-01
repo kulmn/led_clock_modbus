@@ -46,9 +46,18 @@
 #define		SHOW_DATE				1
 
 
+typedef enum
+{
+	DISPL_CLOCK,
+	DISPL_DATE,
+	DISPL_TEMP_EXT,
+	DISPL_TEMP_INT,
+} Displ_Params;
+
 
 #define		DATA_OUT_TASK_FRQ			(500)			//ms
-#define		CLOCK_SHOW_TIME			( 10 * (1000/DATA_OUT_TASK_FRQ)	)		//s
+#define		BT_PRESS_DELAY_TIME		( 5 * (1000/DATA_OUT_TASK_FRQ)	)		//s
+#define		CLOCK_SHOW_TIME			( 10 * (1000/DATA_OUT_TASK_FRQ) )		//s
 #define		PARAM1_SHOW_TIME		(  2 * (1000/DATA_OUT_TASK_FRQ) + CLOCK_SHOW_TIME )
 #define		PARAM2_SHOW_TIME		( 2 * (1000/DATA_OUT_TASK_FRQ) + CLOCK_SHOW_TIME + PARAM1_SHOW_TIME)		//s
 

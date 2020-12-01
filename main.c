@@ -103,7 +103,8 @@ void vIndDataOutTask(void *pvParameters)
 	portBASE_TYPE xStatus;
 	const TickType_t xFrequency = DATA_OUT_TASK_FRQ;		//  ms
 
-	static uint16_t tcnt = 0, dot_msk = 0;
+	static uint16_t tcnt = 0, scnt = 0, dot_msk = 0;
+	static uint8_t cur_displ  = DISPL_CLOCK;
 
 	xLastWakeTime = xTaskGetTickCount();
 	for (;;)
@@ -114,6 +115,8 @@ void vIndDataOutTask(void *pvParameters)
 
 		uint8_t hours = bcd_to_uint8(ds1307_data.hours);
 		uint8_t minutes = bcd_to_uint8(ds1307_data.minutes);
+		uint8_t month = bcd_to_uint8(ds1307_data.month);
+		uint8_t month_day = bcd_to_uint8(ds1307_data.month_day);
 		uint8_t button_pressed = 0;
 		for (uint8_t i = 0; i < 4; i++)
 		{
@@ -123,23 +126,37 @@ void vIndDataOutTask(void *pvParameters)
 				switch (i)
 				{
 					case 0:
-						if (hours < 23) hours++; break;
+						if (cur_displ == DISPL_CLOCK)	if (hours < 23) hours++;
+						if (cur_displ == DISPL_DATE)	if (month_day < 31) month_day++;
+						break;
 					case 1:
-						if (hours > 0) hours--;	 break;
+						if (cur_displ == DISPL_CLOCK)	if (hours > 0) hours--;
+						if (cur_displ == DISPL_DATE)	if (month_day > 1) month_day--;
+						break;
 					case 2:
-						if (minutes < 59) minutes++; break;
+						if (cur_displ == DISPL_CLOCK)	if (minutes < 59) minutes++;
+						if (cur_displ == DISPL_DATE)	if (month < 12) month++;
+						break;
 					case 3:
-						if (minutes > 0) minutes--; break;
+						if (cur_displ == DISPL_CLOCK)	if (minutes > 0) minutes--;
+						if (cur_displ == DISPL_DATE)	if (month > 1) month--;
+						break;
 				}
 			}
 		}
 		if (button_pressed)
 		{
-			tcnt = 10;
+			scnt = BT_PRESS_DELAY_TIME; //s
 			ds1307_data.hours = uint32_to_bcd(hours);
 			ds1307_data.minutes = uint32_to_bcd(minutes);
+			ds1307_data.month = uint32_to_bcd(month);
+			ds1307_data.month_day = uint32_to_bcd(month_day);
 			DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data);
 		}
+
+		// Delay after button pressed
+		if (scnt > 0)	scnt--;
+		else tcnt++;
 
 #if USE_MODBUS > 0
 		// update time from modbus master
@@ -164,26 +181,43 @@ void vIndDataOutTask(void *pvParameters)
 		// update indicator data
 		if (tcnt < CLOCK_SHOW_TIME)			// s
 		{
-			if (dot_msk)	dot_msk = 0;
-			else dot_msk = 0x06;
-
-			led7seg_write_two_bcd_bytes(&led_ind, ds1307_data.hours, ds1307_data.minutes, dot_msk);
+			cur_displ = DISPL_CLOCK;
 		}else
 			if (tcnt < PARAM1_SHOW_TIME)
 			{
 				#if SHOW_TEMP_EXT > 0
-				led7seg_write_ds18b20_temp(&led_ind, ext_cur_temp.value, ext_cur_temp.tens_value);
+				cur_displ = DISPL_TEMP_EXT;
 				#endif
 				#if SHOW_DATE > 0
-				led7seg_write_two_bcd_bytes(&led_ind, ds1307_data.month_day, ds1307_data.month, 0x04);
+				cur_displ = DISPL_DATE;
 				#endif
 			}else
 				if (tcnt < PARAM2_SHOW_TIME)
 				{
-					led7seg_write_ds18b20_temp(&led_ind, int_cur_temp.value, ext_cur_temp.tens_value);
+					cur_displ = DISPL_TEMP_INT;
 				}else tcnt = 0;
 
-		tcnt++;
+
+		switch (cur_displ)
+		{
+			case DISPL_CLOCK:
+				if (dot_msk) dot_msk = 0;
+				else dot_msk = 0x06;
+				led7seg_write_two_bcd_bytes(&led_ind, ds1307_data.hours, ds1307_data.minutes, dot_msk );
+				break;
+			case DISPL_DATE:
+				led7seg_write_two_bcd_bytes(&led_ind, ds1307_data.month_day, ds1307_data.month, 0x04 );
+				break;
+			case DISPL_TEMP_EXT:
+				led7seg_write_ds18b20_temp(&led_ind, ext_cur_temp.value, ext_cur_temp.tens_value );
+				break;
+			case DISPL_TEMP_INT:
+				led7seg_write_ds18b20_temp(&led_ind, int_cur_temp.value, ext_cur_temp.tens_value );
+				break;
+		}
+
+
+
 	}
 
 	vTaskDelete(NULL );
