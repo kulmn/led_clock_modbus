@@ -41,11 +41,13 @@
 #include <rtc/ds1307.h>
 
 
+#define		USE_MODBUS				0
 //#define		SHOW_TEMP_EXT		1
 #define		SHOW_DATE				1
 
-#define		DATA_OUT_TASK_FRQ			(500)			//ms
 
+
+#define		DATA_OUT_TASK_FRQ			(500)			//ms
 #define		CLOCK_SHOW_TIME			( 10 * (1000/DATA_OUT_TASK_FRQ)	)		//s
 #define		PARAM1_SHOW_TIME		(  2 * (1000/DATA_OUT_TASK_FRQ) + CLOCK_SHOW_TIME )
 #define		PARAM2_SHOW_TIME		( 2 * (1000/DATA_OUT_TASK_FRQ) + CLOCK_SHOW_TIME + PARAM1_SHOW_TIME)		//s

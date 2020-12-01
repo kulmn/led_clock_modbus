@@ -141,6 +141,7 @@ void vIndDataOutTask(void *pvParameters)
 			DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data);
 		}
 
+#if USE_MODBUS > 0
 		// update time from modbus master
 		uint16_t new_mb_time_in_munutes = (usRegHoldingBuf[0] * 60) + usRegHoldingBuf[1];
 
@@ -157,6 +158,7 @@ void vIndDataOutTask(void *pvParameters)
 				DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data );
 			}
 		}
+#endif
 
 
 		// update indicator data
@@ -368,7 +370,11 @@ void periphery_init()
 	rtc_ds1307.SDA = (GPIO_HW_PIN) {I2C1_SDA};
 	DS1307_Init(&rtc_ds1307, I2C1, RCC_I2C1, 8);
 
+#if USE_MODBUS > 0
 	init_modbus();
+#endif
+
+
 	init_led7seg();
 }
 
@@ -394,7 +400,10 @@ int main(void)
 	xTaskCreate(vIndDataOutTask,(signed char*)"", configMINIMAL_STACK_SIZE * 2,	NULL, tskIDLE_PRIORITY + 1, NULL);
 	xTaskCreate(vLed7segUpdateTask,(signed char*)"", configMINIMAL_STACK_SIZE * 1,	NULL, tskIDLE_PRIORITY + 2, NULL);
 
+#if USE_MODBUS > 0
 	xTaskCreate(vModbusTask,(signed char*)"", configMINIMAL_STACK_SIZE * 1,	NULL, tskIDLE_PRIORITY + 1, NULL);
+#endif
+
 	vTaskStartScheduler();
 
 	for( ;; );
