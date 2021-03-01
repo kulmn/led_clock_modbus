@@ -212,7 +212,7 @@ void vIndDataOutTask(void *pvParameters)
 				led7seg_write_ds18b20_temp(&led_ind, ext_cur_temp.value, ext_cur_temp.tens_value );
 				break;
 			case DISPL_TEMP_INT:
-				led7seg_write_ds18b20_temp(&led_ind, int_cur_temp.value, ext_cur_temp.tens_value );
+				led7seg_write_ds18b20_temp(&led_ind, int_cur_temp.value, int_cur_temp.tens_value );
 				break;
 		}
 
@@ -296,7 +296,7 @@ void init_modbus(void)
 	mb_serial_drv.usart_hl = &usart_1;
 	modbus_pr.driver = (Modbus_Interface*)&mb_serial_drv;
 	modbus_pr.packet_buf = mb_packet_buf;
-	eMBInit(&modbus_pr, 11 );
+	eMBInit(&modbus_pr, MODBUS_ADRESS );
 
 	usRegHoldingBuf[0] = 0;
 	usRegHoldingBuf[1] = 0;
