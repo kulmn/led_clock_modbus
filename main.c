@@ -101,9 +101,10 @@ void vIndDataOutTask(void *pvParameters)
 {
 	TickType_t xLastWakeTime;
 	portBASE_TYPE xStatus;
-	const TickType_t xFrequency = 500;		//  1\2 s
+	const TickType_t xFrequency = DATA_OUT_TASK_FRQ;		//  ms
 
-	static uint16_t tcnt = 0, dot_msk = 0;
+	static uint16_t tcnt = 0, scnt = 0, dot_msk = 0;
+	static uint8_t cur_displ  = DISPL_CLOCK;
 
 	xLastWakeTime = xTaskGetTickCount();
 	for (;;)
@@ -114,6 +115,8 @@ void vIndDataOutTask(void *pvParameters)
 
 		uint8_t hours = bcd_to_uint8(ds1307_data.hours);
 		uint8_t minutes = bcd_to_uint8(ds1307_data.minutes);
+		uint8_t month = bcd_to_uint8(ds1307_data.month);
+		uint8_t month_day = bcd_to_uint8(ds1307_data.month_day);
 		uint8_t button_pressed = 0;
 		for (uint8_t i = 0; i < 4; i++)
 		{
@@ -123,24 +126,39 @@ void vIndDataOutTask(void *pvParameters)
 				switch (i)
 				{
 					case 0:
-						if (hours < 23) hours++; break;
+						if (cur_displ == DISPL_CLOCK)	if (hours < 23) hours++;
+						if (cur_displ == DISPL_DATE)	if (month_day < 31) month_day++;
+						break;
 					case 1:
-						if (hours > 0) hours--;	 break;
+						if (cur_displ == DISPL_CLOCK)	if (hours > 0) hours--;
+						if (cur_displ == DISPL_DATE)	if (month_day > 1) month_day--;
+						break;
 					case 2:
-						if (minutes < 59) minutes++; break;
+						if (cur_displ == DISPL_CLOCK)	if (minutes < 59) minutes++;
+						if (cur_displ == DISPL_DATE)	if (month < 12) month++;
+						break;
 					case 3:
-						if (minutes > 0) minutes--; break;
+						if (cur_displ == DISPL_CLOCK)	if (minutes > 0) minutes--;
+						if (cur_displ == DISPL_DATE)	if (month > 1) month--;
+						break;
 				}
 			}
 		}
 		if (button_pressed)
 		{
-			tcnt = 10;
+			scnt = BT_PRESS_DELAY_TIME; //s
 			ds1307_data.hours = uint32_to_bcd(hours);
 			ds1307_data.minutes = uint32_to_bcd(minutes);
+			ds1307_data.month = uint32_to_bcd(month);
+			ds1307_data.month_day = uint32_to_bcd(month_day);
 			DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data);
 		}
 
+		// Delay after button pressed
+		if (scnt > 0)	scnt--;
+		else tcnt++;
+
+#if USE_MODBUS > 0
 		// update time from modbus master
 		uint16_t new_mb_time_in_munutes = (usRegHoldingBuf[0] * 60) + usRegHoldingBuf[1];
 
@@ -157,26 +175,49 @@ void vIndDataOutTask(void *pvParameters)
 				DS1307_Set_All_Registers(&rtc_ds1307, &ds1307_data );
 			}
 		}
+#endif
 
 
 		// update indicator data
-		if (tcnt < 20)			// 10s
+		if (tcnt < CLOCK_SHOW_TIME)			// s
 		{
-			if (dot_msk)	dot_msk = 0;
-			else dot_msk = 0x06;
-
-			led7seg_write_time(&led_ind, ds1307_data.hours, ds1307_data.minutes, dot_msk);
+			cur_displ = DISPL_CLOCK;
 		}else
-			if (tcnt < 24)
+			if (tcnt < PARAM1_SHOW_TIME)
 			{
-				led7seg_write_ds18b20_temp(&led_ind, ext_cur_temp.value, ext_cur_temp.tens_value);
+				#if SHOW_TEMP_EXT > 0
+				cur_displ = DISPL_TEMP_EXT;
+				#endif
+				#if SHOW_DATE > 0
+				cur_displ = DISPL_DATE;
+				#endif
 			}else
-				if (tcnt < 28)
+				if (tcnt < PARAM2_SHOW_TIME)
 				{
-					led7seg_write_ds18b20_temp(&led_ind, int_cur_temp.value, ext_cur_temp.tens_value);
+					cur_displ = DISPL_TEMP_INT;
 				}else tcnt = 0;
 
-		tcnt++;
+
+		switch (cur_displ)
+		{
+			case DISPL_CLOCK:
+				if (dot_msk) dot_msk = 0;
+				else dot_msk = 0x06;
+				led7seg_write_two_bcd_bytes(&led_ind, ds1307_data.hours, ds1307_data.minutes, dot_msk );
+				break;
+			case DISPL_DATE:
+				led7seg_write_two_bcd_bytes(&led_ind, ds1307_data.month_day, ds1307_data.month, 0x04 );
+				break;
+			case DISPL_TEMP_EXT:
+				led7seg_write_ds18b20_temp(&led_ind, ext_cur_temp.value, ext_cur_temp.tens_value );
+				break;
+			case DISPL_TEMP_INT:
+				led7seg_write_ds18b20_temp(&led_ind, int_cur_temp.value, int_cur_temp.tens_value );
+				break;
+		}
+
+
+
 	}
 
 	vTaskDelete(NULL );
@@ -255,7 +296,7 @@ void init_modbus(void)
 	mb_serial_drv.usart_hl = &usart_1;
 	modbus_pr.driver = (Modbus_Interface*)&mb_serial_drv;
 	modbus_pr.packet_buf = mb_packet_buf;
-	eMBInit(&modbus_pr, 11 );
+	eMBInit(&modbus_pr, MODBUS_ADRESS );
 
 	usRegHoldingBuf[0] = 0;
 	usRegHoldingBuf[1] = 0;
@@ -363,7 +404,11 @@ void periphery_init()
 	rtc_ds1307.SDA = (GPIO_HW_PIN) {I2C1_SDA};
 	DS1307_Init(&rtc_ds1307, I2C1, RCC_I2C1, 8);
 
+#if USE_MODBUS > 0
 	init_modbus();
+#endif
+
+
 	init_led7seg();
 }
 
@@ -389,7 +434,10 @@ int main(void)
 	xTaskCreate(vIndDataOutTask,(signed char*)"", configMINIMAL_STACK_SIZE * 2,	NULL, tskIDLE_PRIORITY + 1, NULL);
 	xTaskCreate(vLed7segUpdateTask,(signed char*)"", configMINIMAL_STACK_SIZE * 1,	NULL, tskIDLE_PRIORITY + 2, NULL);
 
+#if USE_MODBUS > 0
 	xTaskCreate(vModbusTask,(signed char*)"", configMINIMAL_STACK_SIZE * 1,	NULL, tskIDLE_PRIORITY + 1, NULL);
+#endif
+
 	vTaskStartScheduler();
 
 	for( ;; );

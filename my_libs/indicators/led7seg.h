@@ -74,7 +74,7 @@ void led7seg_init(LED7SEG *led_ind);
 void led7seg_update(LED7SEG *led_ind);
 void led7seg_update_double(LED7SEG *led_ind, LED7SEG *led_ind2);
 void led7seg_write_ds18b20_temp(LED7SEG *led_ind, int8_t value, uint8_t tens_value);
-void led7seg_write_time(LED7SEG *led_ind, uint8_t bcd_hours, uint8_t bcd_minutes, uint8_t dots_mask);
+void led7seg_write_two_bcd_bytes(LED7SEG *led_ind, uint8_t bcd_hight, uint8_t bcd_low, uint8_t dots_mask);
 void led7seg_write_uint(LED7SEG *led_ind, uint16_t num);
 void led7seg_write(LED7SEG *led_ind, uint8_t digit, uint8_t bcd_num);
 void led7seg_write_err(LED7SEG *led_ind);
